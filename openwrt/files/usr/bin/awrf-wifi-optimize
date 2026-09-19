@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+IFACE=${1:-wlan0}
+COUNTRY=${2:-PK}
+case "$IFACE" in wlan[0-9]|phy[0-9]) ;; *) echo 'invalid interface'; exit 2;; esac
+iw reg set "$COUNTRY" 2>/dev/null || true
+iw dev "$IFACE" info >/dev/null 2>&1 || { echo "interface unavailable: $IFACE"; exit 1; }
+echo "Wi-Fi optimization check complete for $IFACE"
+echo "Regulatory country: $COUNTRY"
+echo 'TX power remains constrained by hardware and regulatory limits.'
