@@ -8,6 +8,7 @@ import { Security } from "./src/core/models.js";
 import { supportedFeatures } from "./src/core/capabilities.js";
 import { defaultRouterConfig } from "./src/core/config.js";
 import { createHardwareRuntime } from "./src/adapters/runtime.js";
+import { isCredentialStoreConfigured, listCredentialProfiles, removeCredentialProfile, upsertCredentialProfile } from "./src/core/credentials.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +21,72 @@ async function startServer() {
 
   app.use(express.json());
 
+  const requireAdminToken = (req: express.Request, res: express.Response): boolean => {
+    const expected = process.env.ADMIN_API_TOKEN;
+    if (!expected) {
+      res.status(503).json({ error: "ADMIN_API_TOKEN is not configured" });
+      return false;
+    }
+    const supplied = req.header("x-admin-token");
+    if (!supplied || supplied !== expected) {
+      res.status(401).json({ error: "Admin authentication required" });
+      return false;
+    }
+    return true;
+  };
+
+
   // --- REST API ROUTES FIRST ---
+
+  // Encrypted WISP credential profiles. Passwords are accepted only on write and never returned.
+  app.get("/api/credentials", async (req, res) => {
+    if (!requireAdminToken(req, res)) return;
+    if (!isCredentialStoreConfigured()) {
+      res.status(503).json({ configured: false, error: "CREDENTIAL_STORE_KEY is not configured" });
+      return;
+    }
+    res.json({ configured: true, profiles: await listCredentialProfiles() });
+  });
+
+  app.post("/api/credentials", async (req, res) => {
+    if (!requireAdminToken(req, res)) return;
+    if (!isCredentialStoreConfigured()) {
+      res.status(503).json({ configured: false, error: "CREDENTIAL_STORE_KEY is not configured" });
+      return;
+    }
+    const { id, ssid, security, password } = req.body || {};
+    if (typeof ssid !== "string" || typeof password !== "string" || password.length === 0) {
+      res.status(400).json({ error: "ssid and password are required" });
+      return;
+    }
+    try {
+      const profile = await upsertCredentialProfile({
+        id,
+        ssid,
+        security: security || Security.WPA2,
+        password,
+      });
+      res.status(201).json({ success: true, profile });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Credential save failed" });
+    }
+  });
+
+  app.delete("/api/credentials/:id", async (req, res) => {
+    if (!requireAdminToken(req, res)) return;
+    if (!isCredentialStoreConfigured()) {
+      res.status(503).json({ configured: false, error: "CREDENTIAL_STORE_KEY is not configured" });
+      return;
+    }
+    const removed = await removeCredentialProfile(req.params.id);
+    if (!removed) {
+      res.status(404).json({ error: "Credential profile not found" });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+
 
   // Health / Status Check
   app.get("/api/health", (req, res) => {
