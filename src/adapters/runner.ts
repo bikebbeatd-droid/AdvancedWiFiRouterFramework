@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const ALLOWED = new Set(["iw", "ip", "cat"]);
+const ALLOWED = new Set(["iw", "ip", "cat", "uci", "wifi", "ifup", "ifdown", "ping", "nslookup"]);
 
 function validArg(value: string): boolean {
   return /^[A-Za-z0-9._:/-]+$/.test(value);
