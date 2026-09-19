@@ -18,5 +18,6 @@ export interface Network {
   latency_ms?: number;
   packet_loss_pct?: number;
   stability: number;
+  credential_ref?: string;
   metadata?: Record<string, any>;
 }
