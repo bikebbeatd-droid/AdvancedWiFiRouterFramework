@@ -1,17 +1,16 @@
 <!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Advanced WiFi Router</title><link rel="stylesheet" href="style.css"></head>
-<body>
-<main class="app">
-<header><h1>Advanced WiFi Router</h1><p>Network control dashboard</p></header>
-<section class="grid">
-<article><span>Mode</span><strong id="mode">--</strong></article>
-<article><span>Uplink</span><strong id="uplink">--</strong></article>
-<article><span>Signal</span><strong id="signal">--</strong></article>
-<article><span>Latency</span><strong id="latency">--</strong></article>
-<article><span>Clients</span><strong id="clients">--</strong></article>
-<article><span>Health</span><strong id="health">--</strong></article>
-</section>
-<section class="panel"><h2>Router status</h2><p id="updated">Waiting for API...</p></section>
-</main><script src="app.js"></script>
-</body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220"><title>WiFi Router Control</title><link rel="stylesheet" href="style.css"></head>
+<body><main class="app">
+<header class="topbar"><div><p class="eyebrow">ROUTER CONTROL</p><h1>WiFi Dashboard</h1><p class="muted">Monitor, scan and manage your connection.</p></div>
+<nav><a class="active" href="index.html">Dashboard</a><a href="scan.html">Scan</a><a href="select.html">Select</a><a href="wisp.html">WISP</a></nav></header>
+<section class="grid" id="stats">
+<article><span>Mode</span><strong id="mode">--</strong></article><article><span>Uplink</span><strong id="uplink">--</strong></article>
+<article><span>Signal</span><strong id="signal">--</strong></article><article><span>Latency</span><strong id="latency">--</strong></article>
+<article><span>Clients</span><strong id="clients">--</strong></article><article><span>Health</span><strong id="health">--</strong></article></section>
+<section class="panel"><div class="panelhead"><div><h2>Live status</h2><p id="updated" class="muted">Connecting…</p></div><span id="dot" class="statusdot"></span></div>
+<div id="message" class="message">Loading router status…</div></section>
+<section class="quick"><a class="quickcard" href="scan.html"><b>📡 Scan Wi-Fi</b><span>Find nearby networks</span></a>
+<a class="quickcard" href="select.html"><b>⚡ Select network</b><span>Choose an eligible uplink</span></a>
+<a class="quickcard" href="wisp.html"><b>🌐 WISP setup</b><span>Configure wireless uplink</span></a></section>
+</main><script src="app.js"></script></body></html>
