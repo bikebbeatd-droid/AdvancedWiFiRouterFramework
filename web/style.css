@@ -10,3 +10,5 @@
 .detailgrid span{display:block;font-size:.78rem;opacity:.7;margin-bottom:5px}
 .detailgrid strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){.detailgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.actions{align-items:stretch}.actions button,.toggle{flex:1 1 140px;justify-content:center}}
+
+.badge{font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.07);opacity:.8}.badge.live{background:rgba(69,212,131,.15);color:#75e8a5;opacity:1}.healthbar{height:9px;background:#0a1424;border-radius:99px;overflow:hidden;margin:16px 0}.healthbar>div{height:100%;width:0;transition:width .35s ease;background:#45d483}.telemetry strong{font-size:14px}
