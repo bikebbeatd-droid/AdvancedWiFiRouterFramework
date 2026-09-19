@@ -4,6 +4,7 @@ export interface RouterPolicy {
   allow_open_networks: boolean;
   allow_saved_credentials: boolean;
   never_bypass_authentication: boolean;
+  auto_reconnect: boolean;
 }
 
 export interface SelectorConfig {
@@ -29,6 +30,7 @@ export const defaultRouterConfig: RouterConfig = {
     allow_open_networks: true,
     allow_saved_credentials: true,
     never_bypass_authentication: true,
+    auto_reconnect: true,
   },
   selector: {
     minimum_rssi_dbm: -82,
