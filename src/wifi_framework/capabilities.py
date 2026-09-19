@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -13,7 +13,10 @@ class WifiCapabilities:
     ieee80211k: bool = False
     ieee80211v: bool = False
     ieee80211r: bool = False
+    channels_2ghz: tuple[int, ...] = field(default_factory=tuple)
+    channels_5ghz: tuple[int, ...] = field(default_factory=tuple)
+    channels_6ghz: tuple[int, ...] = field(default_factory=tuple)
 
 
 def supported_features(cap: WifiCapabilities) -> list[str]:
-    return [name for name, enabled in vars(cap).items() if enabled]
+    return [name for name, enabled in vars(cap).items() if isinstance(enabled, bool) and enabled]
