@@ -1,0 +1,6 @@
+{
+  "name": "Advanced WiFi Router Framework",
+  "description": "Modular hardware-aware Wi-Fi router framework with smart network discovery, deterministic scoring selection, connection state machine, and real-time health diagnostics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
