@@ -6,7 +6,8 @@ const execFileAsync = promisify(execFile);
 const ALLOWED = new Set(["iw", "ip", "cat", "uci", "wifi", "ifup", "ifdown", "ping", "nslookup"]);
 
 function validArg(value: string): boolean {
-  return /^[A-Za-z0-9._:/-]+$/.test(value);
+  // execFile does not invoke a shell, so spaces/symbols in SSIDs and passwords are safe.
+  return value.length > 0 && value.length <= 512 && !/[\u0000-\u001F\u007F]/.test(value);
 }
 
 export class SafeCommandRunner {
