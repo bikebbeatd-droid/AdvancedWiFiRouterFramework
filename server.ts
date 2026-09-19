@@ -7,13 +7,14 @@ import { ConnectionState } from "./src/core/state.js";
 import { Security } from "./src/core/models.js";
 import { supportedFeatures } from "./src/core/capabilities.js";
 import { defaultRouterConfig } from "./src/core/config.js";
+import { createHardwareRuntime } from "./src/adapters/runtime.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);\n  const WIFI_INTERFACE = process.env.IFACE || "wlan0";\n  const hardware = createHardwareRuntime();
 
   app.use(express.json());
 
@@ -50,7 +51,7 @@ async function startServer() {
       signal_dbm: active?.rssi_dbm ?? null,
       latency_ms: latestHealth?.sample.latency_ms ?? active?.latency_ms ?? null,
       packet_loss_pct: latestHealth?.sample.packet_loss_pct ?? active?.packet_loss_pct ?? null,
-      clients: null,
+      clients: hardware.enabled ? null : null,
       health: Math.round(healthScoreValue * 100),
       activeNetwork: active || null,
       recommendedNetwork: selection.best?.network || null,
@@ -68,7 +69,7 @@ async function startServer() {
   });
 
   // Trigger Scanner
-  app.post("/api/networks/scan", (req, res) => {
+  app.post("/api/networks/scan", async (req, res) => {\n    if (hardware.adapter) {\n      try {\n        const scanned = await hardware.adapter.scan(WIFI_INTERFACE);\n        const updated = scanned.map((network) => {\n          const previous = globalRouterEngine.getNetworkBySsid(network.ssid);\n          return { ...network, authorized: previous?.authorized ?? false, stability: previous?.stability ?? 0 };\n        });\n        updated.forEach((network) => globalRouterEngine.addOrUpdateNetwork(network));\n        res.json({ success: true, source: "hardware", count: updated.length, networks: updated });\n      } catch (error) {\n        res.status(503).json({ success: false, source: "hardware", error: error instanceof Error ? error.message : "Hardware scan failed" });\n      }\n      return;\n    }
     globalRouterEngine.stateMachine.transition(
       ConnectionState.SCANNING,
       "Initiated Wi-Fi environment channel scan"
