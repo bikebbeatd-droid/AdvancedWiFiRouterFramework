@@ -1,16 +1,12 @@
 # Dashboard
 
-The project now includes a lightweight mobile-responsive web dashboard and a dependency-free status API.
+The project includes a mobile-responsive dashboard and a dependency-free read-only status/scan API.
 
-## Current dashboard
-- Mode
-- Uplink network
-- Signal level
-- Latency
-- Connected client count
-- Overall health
-- Automatic status refresh every 5 seconds
+## Pages
+- Dashboard status cards
+- Wi-Fi scan table
 
-The UI is intentionally separate from router-specific control logic. Future pages can add Wi-Fi scanning, network selection, WISP/repeater configuration, clients, QoS, diagnostics, logs, hardware capabilities and recovery controls.
+## Scan API
+`GET /api/scan` returns normalized scan records when `scan_interface` is configured. If no interface is configured, the endpoint returns a safe 503 response rather than guessing a radio.
 
-The API currently exposes read-only `GET /api/status`. Configuration-changing endpoints should be added only with authentication, authorization, validation and rollback protections.
+Configuration-changing endpoints should only be added with authentication, authorization, validation and rollback protections.
