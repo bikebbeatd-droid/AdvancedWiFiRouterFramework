@@ -22,7 +22,8 @@ endef
 define Package/awrf/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/awrf $(1)/etc/config/awrf
-	$(INSTALL_CONF) ./files/etc/config/firewall.awrf $(1)/etc/config/firewall.awrf
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/99-awrf $(1)/etc/uci-defaults/99-awrf
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/awrf $(1)/etc/init.d/awrf
 	$(INSTALL_DIR) $(1)/usr/bin
