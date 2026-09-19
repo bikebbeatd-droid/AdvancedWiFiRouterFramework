@@ -27,6 +27,7 @@ define Package/awrf/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/usr/bin/awrf-check $(1)/usr/bin/awrf-check
 	$(INSTALL_BIN) ./files/usr/bin/awrf-runtime $(1)/usr/bin/awrf-runtime
+	$(INSTALL_BIN) ./files/usr/bin/awrf-wifi-optimize $(1)/usr/bin/awrf-wifi-optimize
 	$(INSTALL_DIR) $(1)/usr/lib/awrf
 	$(CP) ../../dist/* $(1)/usr/lib/awrf/ 2>/dev/null || true
 endef
