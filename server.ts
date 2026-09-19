@@ -8,7 +8,8 @@ import { Security } from "./src/core/models.js";
 import { supportedFeatures } from "./src/core/capabilities.js";
 import { defaultRouterConfig } from "./src/core/config.js";
 import { createHardwareRuntime } from "./src/adapters/runtime.js";
-import { isCredentialStoreConfigured, listCredentialProfiles, removeCredentialProfile, upsertCredentialProfile } from "./src/core/credentials.js";
+import { getCredentialSecret, isCredentialStoreConfigured, listCredentialProfiles, removeCredentialProfile, upsertCredentialProfile } from "./src/core/credentials.js";
+import { analyzeChannels } from "./src/adapters/openwrt.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,6 +88,96 @@ async function startServer() {
   });
 
 
+
+  // Real WISP connection. Protected networks require explicit authorization and a saved credential.
+  app.post("/api/wisp/connect", async (req, res) => {
+    const { ssid, credentialRef, radioDevice, bssid } = req.body || {};
+    if (typeof ssid !== "string" || !ssid) {
+      res.status(400).json({ error: "ssid is required" });
+      return;
+    }
+    const network = globalRouterEngine.getNetworkBySsid(ssid);
+    if (!network) {
+      res.status(404).json({ error: "Network is not in the current scan table" });
+      return;
+    }
+    if (network.security !== Security.OPEN && network.authorized !== true) {
+      res.status(403).json({ error: "Protected network must be explicitly authorized first" });
+      return;
+    }
+    if (network.security === Security.OPEN && !globalRouterEngine.config.policy.allow_open_networks) {
+      res.status(403).json({ error: "Open networks are disabled by router policy" });
+      return;
+    }
+    let password: string | undefined;
+    if (network.security !== Security.OPEN) {
+      if (!credentialRef || !globalRouterEngine.config.policy.allow_saved_credentials) {
+        res.status(400).json({ error: "A saved credential reference is required" });
+        return;
+      }
+      const credential = await getCredentialSecret(String(credentialRef));
+      if (!credential || credential.ssid !== ssid) {
+        res.status(400).json({ error: "Credential reference is missing or does not match SSID" });
+        return;
+      }
+      password = credential.password;
+      network.credential_ref = String(credentialRef);
+    }
+    globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTING, "WISP connection requested");
+    try {
+      if (hardware.adapter) {
+        const result = await hardware.adapter.connectWisp({
+          ssid, password, security: network.security, bssid, radioDevice
+        });
+        globalRouterEngine.activeNetworkSsid = ssid;
+        globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, result.detail);
+        res.json({ success: true, mode: "hardware", ssid, detail: result.detail });
+        return;
+      }
+      globalRouterEngine.activeNetworkSsid = ssid;
+      globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, "Simulation WISP connection completed");
+      res.json({ success: true, mode: "simulation", ssid });
+    } catch (error) {
+      globalRouterEngine.stateMachine.transition(ConnectionState.ERROR, "WISP connection failed");
+      res.status(502).json({ success: false, error: error instanceof Error ? error.message : "WISP connection failed" });
+    }
+  });
+
+  app.post("/api/wisp/disconnect", async (req, res) => {
+    try {
+      if (hardware.adapter) await hardware.adapter.disconnectWisp();
+      globalRouterEngine.activeNetworkSsid = null;
+      globalRouterEngine.stateMachine.transition(ConnectionState.IDLE, "WISP disconnected");
+      res.json({ success: true });
+    } catch (error) {
+      res.status(502).json({ success: false, error: error instanceof Error ? error.message : "WISP disconnect failed" });
+    }
+  });
+
+  app.get("/api/diagnostics", async (req, res) => {
+    if (!hardware.adapter) {
+      res.json({ mode: "simulation", gateway_reachable: null, dns_reachable: null, internet_reachable: null, latency_ms: null, packet_loss_pct: null });
+      return;
+    }
+    try {
+      res.json({ mode: "hardware", ...(await hardware.adapter.diagnostics()) });
+    } catch (error) {
+      res.status(503).json({ error: error instanceof Error ? error.message : "Diagnostics failed" });
+    }
+  });
+
+  app.get("/api/channels", (req, res) => {
+    res.json({ source: "current-scan", bands: analyzeChannels(globalRouterEngine.getNetworks()) });
+  });
+
+  app.get("/api/wisp/recommend", (req, res) => {
+    const selection = globalRouterEngine.selectBestNetwork();
+    res.json({
+      network: selection.best?.network || null,
+      score: selection.best?.score ?? null,
+      candidates: selection.allScores.filter(x => x.details.eligible).sort((a,b) => b.details.total-a.details.total).slice(0, 8)
+    });
+  });
 
   // Health / Status Check
   app.get("/api/health", (req, res) => {
@@ -332,8 +423,8 @@ async function startServer() {
     res.json({ success: true, config: globalRouterEngine.config });
   });
 
-  // Reconnect active authorized uplink (hardware adapter can replace this simulation)
-  app.post("/api/reconnect", (req, res) => {
+  // Reconnect active authorized uplink using the stored credential reference when available.
+  app.post("/api/reconnect", async (req, res) => {
     const ssid = globalRouterEngine.activeNetworkSsid;
     const network = ssid ? globalRouterEngine.getNetworkBySsid(ssid) : null;
     if (!network) {
@@ -345,8 +436,23 @@ async function startServer() {
       return;
     }
     globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTING, "Manual reconnect requested");
-    globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, "Reconnect completed");
-    res.json({ success: true, ssid: network.ssid, state: globalRouterEngine.stateMachine.state });
+    try {
+      if (hardware.adapter) {
+        let password: string | undefined;
+        if (network.security !== Security.OPEN) {
+          if (!network.credential_ref) throw new Error("No saved credential reference for active protected network");
+          const credential = await getCredentialSecret(network.credential_ref);
+          if (!credential || credential.ssid !== network.ssid) throw new Error("Saved credential is unavailable");
+          password = credential.password;
+        }
+        await hardware.adapter.connectWisp({ ssid: network.ssid, password, security: network.security, bssid: network.bssid });
+      }
+      globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, "Reconnect completed");
+      res.json({ success: true, ssid: network.ssid, state: globalRouterEngine.stateMachine.state, mode: hardware.adapter ? "hardware" : "simulation" });
+    } catch (error) {
+      globalRouterEngine.stateMachine.transition(ConnectionState.ERROR, "Reconnect failed");
+      res.status(502).json({ success: false, error: error instanceof Error ? error.message : "Reconnect failed" });
+    }
   });
 
   // --- VITE MIDDLEWARE / STATIC ASSETS ---
