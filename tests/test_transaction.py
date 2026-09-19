@@ -1,12 +1,19 @@
-from wifi_framework.transaction import ApplyTransaction,ApplyError,ApplyState
+import pytest
+from wifi_framework.transaction import ApplyTransaction,ApplyState,ApplyError
 
-def test_failed_verification_rolls_back():
-    called=[]
-    tx=ApplyTransaction(); tx.stage(lambda: called.append('rollback')); tx.mark_applied()
-    try: tx.verify(False)
-    except ApplyError: pass
-    assert tx.state==ApplyState.ROLLED_BACK and called==['rollback']
+def test_transaction_executes_staged_actions():
+    calls=[]; tx=ApplyTransaction()
+    tx.stage(lambda:calls.append("apply"),lambda:calls.append("rollback")); tx.mark_applied()
+    assert calls==["apply"] and tx.state==ApplyState.APPLIED
 
-def test_verify_success():
-    tx=ApplyTransaction(); tx.stage(lambda: None); tx.mark_applied(); tx.verify(True)
-    assert tx.state==ApplyState.VERIFIED
+def test_transaction_rolls_back_when_apply_fails():
+    calls=[]; tx=ApplyTransaction()
+    tx.stage(lambda: (_ for _ in ()).throw(RuntimeError("boom")),lambda:calls.append("rollback"))
+    with pytest.raises(ApplyError): tx.mark_applied()
+    assert calls==["rollback"] and tx.state==ApplyState.ROLLED_BACK
+
+def test_transaction_verify_failure_rolls_back():
+    calls=[]; tx=ApplyTransaction()
+    tx.stage(lambda:calls.append("apply"),lambda:calls.append("rollback")); tx.mark_applied()
+    with pytest.raises(ApplyError): tx.verify(False)
+    assert calls==["apply","rollback"] and tx.state==ApplyState.ROLLED_BACK
