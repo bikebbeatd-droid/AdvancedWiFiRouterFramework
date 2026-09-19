@@ -17,3 +17,70 @@ jobs:
       - run: npm install
       - run: npm run lint
       - run: npm run build
+
+  openwrt-package:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download OpenWrt ImageBuilder
+        env:
+          OPENWRT_VERSION: "24.10.7"
+        run: |
+          set -eu
+          url="https://downloads.openwrt.org/releases/$OPENWRT_VERSION/targets/ramips/mt76x8/openwrt-imagebuilder-$OPENWRT_VERSION-ramips-mt76x8.Linux-x86_64.tar.zst"
+          curl -fL "$url" -o /tmp/imagebuilder.tar.zst
+          tar --zstd -xf /tmp/imagebuilder.tar.zst -C /tmp
+          echo "IB_DIR=$(find /tmp -maxdepth 1 -type d -name 'openwrt-imagebuilder-*' | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Build AWRF package
+        run: |
+          set -eu
+          npm install
+          npm run build
+          rm -rf /tmp/awrf-package
+          mkdir -p /tmp/awrf-package/CONTROL /tmp/awrf-package/usr/lib/awrf
+          cp -r dist/. /tmp/awrf-package/usr/lib/awrf/
+          printf '%s\n' 'Package: awrf' 'Version: 1' 'Architecture: mipsel_24kc' 'Description: Advanced WiFi Router Framework runtime' > /tmp/awrf-package/CONTROL/control
+          (cd /tmp/awrf-package && tar -czf "$GITHUB_WORKSPACE/awrf-runtime.tar.gz" .)
+
+      - name: Validate R4C profile exists
+        run: |
+          set -eu
+          grep -q 'xiaomi_mi-router-4c' "$IB_DIR/target/linux/ramips/image/mt76x8.mk" || {
+            echo "R4CM profile not found in ImageBuilder; refusing to create a device image."
+            exit 1
+          }
+
+      - name: Build minimal R4CM sysupgrade image
+        run: |
+          set -eu
+          mkdir -p "$IB_DIR/packages/awrf"
+          cp awrf-runtime.tar.gz "$IB_DIR/packages/awrf/"
+          # This is deliberately a minimal baseline. A Node.js runtime is NOT
+          # embedded until its exact OpenWrt package availability and flash/RAM
+          # footprint are validated on CI.
+          "$IB_DIR/make image PROFILE=xiaomi_mi-router-4c PACKAGES='iw ip-full ping dnsmasq' FILES=openwrt/files"
+          mkdir -p build/openwrt
+          find "$IB_DIR/bin/targets/ramips/mt76x8" -maxdepth 1 -type f -name '*xiaomi_mi-router-4c*' -exec cp {} build/openwrt/ \;
+
+      - name: Check image size
+        run: |
+          set -eu
+          img="$(find build/openwrt -type f -name '*sysupgrade.bin' | head -n1)"
+          test -n "$img"
+          size="$(stat -c%s "$img")"
+          echo "R4CM sysupgrade image bytes: $size"
+          # Never claim flash safety from the raw 16 MB chip size alone.
+          # Keep a conservative artifact gate below 12 MiB for this project.
+          test "$size" -lt 12582912
+
+      - name: Publish build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: awrf-r4cm-openwrt
+          path: |
+            build/openwrt/*
+            awrf-runtime.tar.gz
+          if-no-files-found: error
