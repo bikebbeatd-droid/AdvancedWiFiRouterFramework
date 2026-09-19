@@ -1,5 +1,19 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08101d"><title>WISP Setup</title><link rel="stylesheet" href="style.css"></head><body><main class="app"><header class="topbar"><div><p class="eyebrow">UPLINK MODE</p><h1>WISP Setup</h1><p class="muted">Prepare a wireless uplink and downstream network.</p></div><nav><a href="index.html">Dashboard</a><a href="scan.html">Scan</a><a href="select.html">Select</a><a class="active" href="wisp.html">WISP</a></nav></header><section class="panel"><div class="formgrid"><label>Selected network<input id="ssid" readonly></label><label>Upstream interface<input id="up" value="wlan0"></label><label>Downstream interface<input id="down" value="br-lan"></label><label>Credential reference<input id="cred" type="password" autocomplete="off" placeholder="Administrator supplied"></label></div><button id="validate">Validate setup</button><p id="status" class="muted">Not validated</p></section><section class="panel"><h2>Safety</h2><p class="muted">Protected Wi-Fi credentials are never displayed or returned by the validation API.</p></section></main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08101d"><title>WISP Setup</title><link rel="stylesheet" href="style.css"></head><body><main class="app"><header class="topbar"><div><p class="eyebrow">UPLINK MODE</p><h1>WISP Setup</h1><p class="muted">Prepare a wireless uplink and downstream network.</p></div><nav><a href="index.html">Dashboard</a><a href="scan.html">Scan</a><a href="select.html">Select</a><a class="active" href="wisp.html">WISP</a></nav></header><section class="panel"><div class="formgrid"><label>Selected network<input id="ssid" readonly></label><label>Upstream interface<input id="up" value="wlan0"></label><label>Downstream interface<input id="down" value="br-lan"></label><label>Credential reference<input id="cred" type="password" autocomplete="off" placeholder="Administrator supplied"></label></div><button id="validate">Validate setup</button><p id="status" class="muted">Not validated</p></section><section class="panel"><h2>Safety</h2><p class="muted">Protected Wi-Fi credentials are never displayed or returned by the validation API. Validation does not apply router configuration.</p></section></main><script>
 const q=new URLSearchParams(location.search),ssid=document.getElementById("ssid"),up=document.getElementById("up"),down=document.getElementById("down"),cred=document.getElementById("cred"),button=document.getElementById("validate"),status=document.getElementById("status");
 ssid.value=q.get("ssid")||"None";
-button.onclick=async()=>{button.disabled=true;status.textContent="Validating…";try{const r=await fetch("/api/wisp/validate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ssid:ssid.value,upstream_interface:up.value.trim(),downstream_interface:down.value.trim(),credential_ref:cred.value||null})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.valid)throw Error(d.error||"Validation failed");status.textContent="✓ WISP setup is valid. No configuration has been applied."}catch(e){status.textContent=e.message||"Validation failed"}finally{button.disabled=false}};
+button.onclick=async()=>{
+ button.disabled=true;status.textContent="Checking…";
+ try{
+  if(!ssid.value||ssid.value==="None")throw Error("Select a Wi-Fi network first.");
+  if(!up.value.trim()||!down.value.trim())throw Error("Both interfaces are required.");
+  const r=await fetch("/api/networks",{cache:"no-store"}),data=await r.json();
+  if(!r.ok)throw Error("Unable to read network table.");
+  const network=(Array.isArray(data)?data:[]).find(n=>n.ssid===ssid.value);
+  if(!network)throw Error("Selected network is not in the current scan table.");
+  if(network.authorized!==true)throw Error("Authorize this network before using it as WISP uplink.");
+  if(network.security!=="open"&&!cred.value)throw Error("An authorized credential reference is required for a protected network.");
+  status.textContent="✓ WISP setup is valid. No configuration has been applied.";
+ }catch(e){status.textContent=e.message||"Validation failed"}
+ finally{button.disabled=false}
+};
 </script></body></html>
