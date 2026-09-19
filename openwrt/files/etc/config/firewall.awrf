@@ -1,0 +1,12 @@
+config zone
+	option name 'awrf_wwan'
+	option input 'REJECT'
+	option output 'ACCEPT'
+	option forward 'REJECT'
+	option masq '1'
+	option mtu_fix '1'
+	list network 'awrf_wwan'
+
+config forwarding
+	option src 'lan'
+	option dest 'awrf_wwan'
