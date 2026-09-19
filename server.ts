@@ -37,15 +37,24 @@ async function startServer() {
     const latestHealth =
       globalRouterEngine.healthHistory[globalRouterEngine.healthHistory.length - 1];
     const selection = globalRouterEngine.selectBestNetwork();
+    const active = globalRouterEngine.getNetworkBySsid(
+      globalRouterEngine.activeNetworkSsid || ""
+    );
+    const healthScoreValue = latestHealth ? latestHealth.score : 1.0;
     res.json({
       system: "Advanced WiFi Router Framework",
       version: "0.1.0",
       state: globalRouterEngine.stateMachine.state,
-      activeNetwork: globalRouterEngine.getNetworkBySsid(
-        globalRouterEngine.activeNetworkSsid || ""
-      ),
+      mode: globalRouterEngine.stateMachine.state.toUpperCase(),
+      uplink: active?.ssid || null,
+      signal_dbm: active?.rssi_dbm ?? null,
+      latency_ms: latestHealth?.sample.latency_ms ?? active?.latency_ms ?? null,
+      packet_loss_pct: latestHealth?.sample.packet_loss_pct ?? active?.packet_loss_pct ?? null,
+      clients: null,
+      health: Math.round(healthScoreValue * 100),
+      activeNetwork: active || null,
       recommendedNetwork: selection.best?.network || null,
-      healthScore: latestHealth ? latestHealth.score : 1.0,
+      healthScore: healthScoreValue,
       networkCount: globalRouterEngine.networks.length,
       supportedFeatures: supportedFeatures(globalRouterEngine.capabilities),
       policy: globalRouterEngine.config.policy,
@@ -233,6 +242,23 @@ async function startServer() {
   app.post("/api/config/reset", (req, res) => {
     globalRouterEngine.config = JSON.parse(JSON.stringify(defaultRouterConfig));
     res.json({ success: true, config: globalRouterEngine.config });
+  });
+
+  // Reconnect active authorized uplink (hardware adapter can replace this simulation)
+  app.post("/api/reconnect", (req, res) => {
+    const ssid = globalRouterEngine.activeNetworkSsid;
+    const network = ssid ? globalRouterEngine.getNetworkBySsid(ssid) : null;
+    if (!network) {
+      res.status(404).json({ success: false, error: "No active network selected" });
+      return;
+    }
+    if (!network.authorized && network.security !== Security.OPEN) {
+      res.status(403).json({ success: false, error: "Network is not authorized" });
+      return;
+    }
+    globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTING, "Manual reconnect requested");
+    globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, "Reconnect completed");
+    res.json({ success: true, ssid: network.ssid, state: globalRouterEngine.stateMachine.state });
   });
 
   // --- VITE MIDDLEWARE / STATIC ASSETS ---
