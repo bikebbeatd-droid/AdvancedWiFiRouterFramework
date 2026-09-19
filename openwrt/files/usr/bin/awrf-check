@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+command -v iw >/dev/null 2>&1 || { echo 'missing: iw'; exit 1; }
+command -v ip >/dev/null 2>&1 || { echo 'missing: ip'; exit 1; }
+[ -r /etc/config/awrf ] || { echo 'missing: /etc/config/awrf'; exit 1; }
+echo 'AWRF OpenWrt prerequisites: OK'
