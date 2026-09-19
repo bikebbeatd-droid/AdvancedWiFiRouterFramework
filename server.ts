@@ -34,7 +34,7 @@ async function startServer() {
   });
 
   // Comprehensive System Status
-  app.get("/api/status", (req, res) => {
+  app.get("/api/status", async (req, res) => {
     const latestHealth =
       globalRouterEngine.healthHistory[globalRouterEngine.healthHistory.length - 1];
     const selection = globalRouterEngine.selectBestNetwork();
@@ -42,16 +42,20 @@ async function startServer() {
       globalRouterEngine.activeNetworkSsid || ""
     );
     const healthScoreValue = latestHealth ? latestHealth.score : 1.0;
+    let hardwareSnapshot = null;
+    if (hardware.adapter) {
+      try { hardwareSnapshot = await hardware.adapter.snapshot(WIFI_INTERFACE); } catch { hardwareSnapshot = null; }
+    }
     res.json({
       system: "Advanced WiFi Router Framework",
       version: "0.1.0",
       state: globalRouterEngine.stateMachine.state,
       mode: globalRouterEngine.stateMachine.state.toUpperCase(),
       uplink: active?.ssid || null,
-      signal_dbm: active?.rssi_dbm ?? null,
+      signal_dbm: hardwareSnapshot?.signal_dbm ?? active?.rssi_dbm ?? null,
       latency_ms: latestHealth?.sample.latency_ms ?? active?.latency_ms ?? null,
       packet_loss_pct: latestHealth?.sample.packet_loss_pct ?? active?.packet_loss_pct ?? null,
-      clients: hardware.enabled ? null : null,
+      clients: hardwareSnapshot?.clients ?? null,
       health: Math.round(healthScoreValue * 100),
       activeNetwork: active || null,
       recommendedNetwork: selection.best?.network || null,
@@ -59,6 +63,7 @@ async function startServer() {
       networkCount: globalRouterEngine.networks.length,
       supportedFeatures: supportedFeatures(globalRouterEngine.capabilities),
       policy: globalRouterEngine.config.policy,
+      hardwareStatus: hardwareSnapshot ? { gateway: hardwareSnapshot.gateway, dns: hardwareSnapshot.dns, interface: WIFI_INTERFACE } : null,
       timestamp: new Date().toISOString(),
     });
   });
