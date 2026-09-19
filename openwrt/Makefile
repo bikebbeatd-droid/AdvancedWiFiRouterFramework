@@ -9,7 +9,7 @@ define Package/awrf
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Advanced WiFi Router Framework
-  DEPENDS:=+iw +ip
+  DEPENDS:=+iw +ip +ping +dnsmasq
 endef
 
 define Package/awrf/description
@@ -22,6 +22,7 @@ endef
 define Package/awrf/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/awrf $(1)/etc/config/awrf
+	$(INSTALL_CONF) ./files/etc/config/firewall.awrf $(1)/etc/config/firewall.awrf
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/awrf $(1)/etc/init.d/awrf
 	$(INSTALL_DIR) $(1)/usr/bin
