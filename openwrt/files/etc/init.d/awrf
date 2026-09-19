@@ -16,9 +16,13 @@ start_service() {
 	config_get port main bind_port 8080
 	config_get iface main wifi_interface wlan0
 	config_get adapter main hardware_adapter openwrt
+	config_get admin_token_file main admin_token_file /etc/awrf/admin.token
+	config_get credential_key_file main credential_key_file /etc/awrf/credential.key
+	config_get credential_store_path main credential_store_path /etc/awrf/credentials.json
 
 	procd_open_instance
 	procd_set_param command "$PROG" --host "$host" --port "$port" --interface "$iface" --adapter "$adapter"
+	procd_set_param env ADMIN_API_TOKEN_FILE="$admin_token_file" CREDENTIAL_STORE_KEY_FILE="$credential_key_file" CREDENTIAL_STORE_PATH="$credential_store_path"
 	procd_set_param respawn 3600 5 5
 	procd_set_param stdout 1
 	procd_set_param stderr 1
