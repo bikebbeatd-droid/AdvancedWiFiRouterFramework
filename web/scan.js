@@ -1,4 +1,25 @@
 const status=document.getElementById("status"),rows=document.getElementById("rows"),button=document.getElementById("scan");
-function render(networks){rows.innerHTML="";for(const n of networks){const tr=document.createElement("tr");[n.ssid||"(hidden)",n.security||"unknown",n.rssi_dbm==null?"--":n.rssi_dbm+" dBm",n.channel==null?"--":n.channel,n.quality==null?"--":n.quality].forEach(v=>{const td=document.createElement("td");td.textContent=String(v);tr.appendChild(td)});rows.appendChild(tr)}if(!networks.length)rows.innerHTML='<tr><td colspan="5">No networks found</td></tr>'}
-async function scan(){button.disabled=true;status.textContent="Scanning…";try{const r=await fetch("/api/scan",{cache:"no-store"});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||"Scan failed");render(data.networks||[]);status.textContent=(data.networks||[]).length+" network(s) found"}catch(e){status.textContent=e.message||"Scan failed"}finally{button.disabled=false}}
+function render(networks){
+  rows.innerHTML="";
+  for(const n of networks){
+    const tr=document.createElement("tr");
+    [n.ssid||"(hidden)",n.security||"unknown",n.rssi_dbm==null?"--":n.rssi_dbm+" dBm",n.channel==null?"--":n.channel,n.quality==null?"--":n.quality]
+      .forEach(v=>{const td=document.createElement("td");td.textContent=String(v);tr.appendChild(td)});
+    rows.appendChild(tr);
+  }
+  if(!networks.length)rows.innerHTML='<tr><td colspan="5">No networks found</td></tr>';
+}
+async function scan(){
+  button.disabled=true;
+  status.textContent="Scanning…";
+  try{
+    const r=await fetch("/api/networks/scan",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store"});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error(data.error||"Scan failed");
+    render(data.networks||[]);
+    status.textContent=(data.networks||[]).length+" network(s) found";
+  }catch(e){status.textContent=e.message||"Scan failed"}
+  finally{button.disabled=false}
+}
 button.addEventListener("click",scan);
+scan();
