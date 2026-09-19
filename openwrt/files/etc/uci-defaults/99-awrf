@@ -1,0 +1,25 @@
+#!/bin/sh
+# Create the AWRF WWAN firewall zone and LAN -> WWAN forwarding once.
+# UCI is used instead of shipping a second firewall config file, so this
+# integrates with OpenWrt's normal /etc/config/firewall safely.
+
+. /lib/functions.sh
+
+uci -q get firewall.awrf_wwan >/dev/null 2>&1 || {
+  uci set firewall.awrf_wwan='zone'
+  uci set firewall.awrf_wwan.name='awrf_wwan'
+  uci set firewall.awrf_wwan.input='REJECT'
+  uci set firewall.awrf_wwan.output='ACCEPT'
+  uci set firewall.awrf_wwan.forward='REJECT'
+  uci set firewall.awrf_wwan.masq='1'
+  uci set firewall.awrf_wwan.mtu_fix='1'
+  uci add_list firewall.awrf_wwan.network='awrf_wwan'
+
+  uci set firewall.awrf_lan_to_wwan='forwarding'
+  uci set firewall.awrf_lan_to_wwan.src='lan'
+  uci set firewall.awrf_lan_to_wwan.dest='awrf_wwan'
+
+  uci commit firewall
+}
+
+exit 0
