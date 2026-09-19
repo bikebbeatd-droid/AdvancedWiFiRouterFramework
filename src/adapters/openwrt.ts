@@ -123,7 +123,7 @@ export class OpenWrtAdapter {
     const dnsFile = await this.runner.run("cat", ["/tmp/resolv.conf.d/resolv.conf.auto"]);
     const dnsText = dnsFile.code === 0 ? dnsFile.stdout : (await this.runner.run("cat", ["/etc/resolv.conf"])).stdout;
     const dnsServers = parseDns(dnsText);
-    const dnsPing = dnsServers[0] ? await this.runner.run("ping", ["-c", "1", "-W", "2", dnsServers[0]) : null;
+    const dnsPing = dnsServers[0] ? await this.runner.run("ping", ["-c", "1", "-W", "2", dnsServers[0]]) : null;
     const latency = parsePingLatency(internetPing.stdout);
     const loss = parsePingLoss(internetPing.stdout);
     return {
