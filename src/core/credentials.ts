@@ -1,4 +1,4 @@
-import { createCipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -78,4 +78,18 @@ export async function removeCredentialProfile(id: string): Promise<boolean> {
 
 export function isCredentialStoreConfigured(): boolean {
   return Boolean(process.env.CREDENTIAL_STORE_KEY);
+}
+
+
+export async function getCredentialSecret(id: string): Promise<{ ssid: string; security: CredentialProfile["security"]; password: string } | null> {
+  if (!process.env.CREDENTIAL_STORE_KEY) return null;
+  const item = (await load()).find((x) => x.id === id);
+  if (!item) return null;
+  const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(item.iv, "base64"));
+  decipher.setAuthTag(Buffer.from(item.tag, "base64"));
+  const password = Buffer.concat([
+    decipher.update(Buffer.from(item.ciphertext, "base64")),
+    decipher.final(),
+  ]).toString("utf8");
+  return { ssid: item.ssid, security: item.security, password };
 }
