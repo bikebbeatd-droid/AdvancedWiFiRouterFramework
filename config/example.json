@@ -1,0 +1,23 @@
+{
+  "policy": {
+    "allow_open_networks": true,
+    "allow_saved_credentials": true,
+    "never_bypass_authentication": true
+  },
+  "selector": {
+    "minimum_rssi_dbm": -82,
+    "switch_hysteresis": 12,
+    "weights": {
+      "signal": 0.25,
+      "quality": 0.20,
+      "latency": 0.20,
+      "packet_loss": 0.15,
+      "stability": 0.20
+    }
+  },
+  "health": {
+    "probe_interval_seconds": 10,
+    "failure_threshold": 3,
+    "recovery_threshold": 2
+  }
+}
