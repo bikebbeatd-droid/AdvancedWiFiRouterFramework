@@ -192,12 +192,21 @@ export class RouterEngine {
     return entry;
   }
 
+  public getEligibleNetworks(): Network[] {
+    const minRssi = this.config.selector.minimum_rssi_dbm;
+    return this.networks.filter((n) => {
+      if (n.rssi_dbm !== undefined && n.rssi_dbm < minRssi) return false;
+      return n.security === Security.OPEN || n.authorized === true;
+    });
+  }
+
   public selectBestNetwork(weights?: SelectorWeights): {
     best: { network: Network; score: number } | null;
     allScores: Array<{ network: Network; details: ScoreDetails }>;
   } {
     const activeWeights = weights || this.config.selector.weights;
-    const best = chooseNetwork(this.networks, activeWeights);
+    const eligible = this.getEligibleNetworks();
+    const best = chooseNetwork(eligible, activeWeights);
     const allScores = this.networks.map((n) => ({
       network: n,
       details: scoreBreakdown(n, activeWeights),
