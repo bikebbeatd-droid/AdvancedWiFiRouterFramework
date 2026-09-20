@@ -57,10 +57,11 @@ jobs:
           set -eu
           mkdir -p "$IB_DIR/packages/awrf"
           cp awrf-runtime.tar.gz "$IB_DIR/packages/awrf/"
-          # This is deliberately a minimal baseline. A Node.js runtime is NOT
-          # embedded until its exact OpenWrt package availability and flash/RAM
-          # footprint are validated on CI.
-          "$IB_DIR/make image PROFILE=xiaomi_mi-router-4c PACKAGES='iw ip-full ping dnsmasq' FILES=openwrt/files"
+          # ImageBuilder's make script must be executed from its own directory.
+          # The previous workflow passed the whole command as a filename.
+          cd "$IB_DIR"
+          ./make image PROFILE=xiaomi_mi-router-4c PACKAGES="iw ip-full ping dnsmasq" FILES="$GITHUB_WORKSPACE/openwrt/files"
+          cd "$GITHUB_WORKSPACE"
           mkdir -p build/openwrt
           find "$IB_DIR/bin/targets/ramips/mt76x8" -maxdepth 1 -type f -name '*xiaomi_mi-router-4c*' -exec cp {} build/openwrt/ \;
 
