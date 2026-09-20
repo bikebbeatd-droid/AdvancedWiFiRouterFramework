@@ -138,7 +138,7 @@ async function startServer() {
       globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, "Simulation WISP connection completed");
       res.json({ success: true, mode: "simulation", ssid });
     } catch (error) {
-      globalRouterEngine.stateMachine.transition(ConnectionState.ERROR, "WISP connection failed");
+      globalRouterEngine.stateMachine.transition(ConnectionState.FAILED, "WISP connection failed");
       res.status(502).json({ success: false, error: error instanceof Error ? error.message : "WISP connection failed" });
     }
   });
@@ -450,7 +450,7 @@ async function startServer() {
       globalRouterEngine.stateMachine.transition(ConnectionState.CONNECTED, "Reconnect completed");
       res.json({ success: true, ssid: network.ssid, state: globalRouterEngine.stateMachine.state, mode: hardware.adapter ? "hardware" : "simulation" });
     } catch (error) {
-      globalRouterEngine.stateMachine.transition(ConnectionState.ERROR, "Reconnect failed");
+      globalRouterEngine.stateMachine.transition(ConnectionState.FAILED, "Reconnect failed");
       res.status(502).json({ success: false, error: error instanceof Error ? error.message : "Reconnect failed" });
     }
   });
